@@ -1,0 +1,4 @@
+requests>=2.31
+SQLAlchemy>=2.0
+pydantic>=2.6
+pydantic-settings>=2.0
