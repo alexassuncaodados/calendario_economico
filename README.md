@@ -1,8 +1,8 @@
-# calendario_economico
+# Calendário econômico
 
-Coleta o calendario economico do Investing.com e persiste em SQLite local. Detecao automatica e update incremental (com diff de revisoes). Validacao de payload via pydantic v2 e configuracao (pydantic-settings).
+Coleta o calendário econômico do Investing.com e persiste em SQLite local. Detecção automática e update incremental (com diff de revisões). Validação de payload via pydantic v2 e configuração (pydantic-settings).
 
-## Instalacao
+## Instalação
 
 ```bash
 git clone <repo>
@@ -20,18 +20,18 @@ python -m calendario_economico
 python run.py
 ```
 
-Os dois entry points sao equivalentes. O script roda em no primeiro uso (DB vazio) e UPDATE nas execucoes seguintes.
+Os dois entry points são equivalentes. O script roda em no primeiro uso (DB vazio) e UPDATE nas execuções seguintes.
 
 ## Variaveis de Ambiente
 
-Todas opcionais. Defaults ja cobrem o uso padrao.
+Todas opcionais. Defaults já cobrem o uso padrão.
 
-| Variavel                   | Default                                                                                   | Descricao                                                  |
+| Variável                   | Default                                                                                   | Descrição                                                  |
 | -------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `CALENDAR_BASE_URL`        | `https://endpoints.investing.com/pd-instruments/v1/calendars/economic/events/occurrences` | Endpoint da API                                            |
 | `CALENDAR_START_DATE`      | `2026-01-01`                                                                              | Data inicial do cold start (YYYY-MM-DD)                    |
 | `CALENDAR_TIMEZONE_OFFSET` | `-03:00`                                                                                  | Offset de TZ nos params start_date/end_date enviados a API |
-| `CALENDAR_COUNTRY_IDS`     | `6,37,39,35,4,5,72`                                                                       | IDs de paises (comma separated)                            |
+| `CALENDAR_COUNTRY_IDS`     | `6,37,39,35,4,5,72`                                                                       | IDs de países (comma separated)                            |
 | `CALENDAR_DOMAIN_ID`       | `30`                                                                                      | Domain ID da API                                           |
 | `CALENDAR_LIMIT`           | `500`                                                                                     | Limite de resultados por request                           |
 | `CALENDAR_THRESHOLD_DAYS`  | `7`                                                                                       | Gap em dias que alterna estrategia de chunking em UPDATE   |
@@ -41,7 +41,7 @@ Todas opcionais. Defaults ja cobrem o uso padrao.
 | `CALENDAR_DB_NAME`         | `economic_calendar.db`                                                                    | Nome do arquivo SQLite                                     |
 | `CALENDAR_LOG_LEVEL`       | `INFO`                                                                                    | Nivel de log (`INFO` ou `DEBUG`)                           |
 
-## Modos de Operacao
+## Modos de Operação
 
 ```
                    get_last_occurrence_date()
@@ -61,8 +61,8 @@ Todas opcionais. Defaults ja cobrem o uso padrao.
                               (detecta revisoes actual/forecast/previous)
 ```
 
-- **COLD**: banco vazio. Coleta `START_DATE -> today` em chunks semanais. Upsert burro (delete+insert por `occurrence_id`), sem diff. Rapido (~1x vida do DB).
-- **UPDATE**: banco populado. Re-check do ultimo dia (detecta revisoes), depois coleta `last_day+1 -> today`. Upsert com diff de `actual`/`forecast`/`previous`. Revisoes sao logadas em DEBUG.
+- **COLD**: banco vazio. Coleta `START_DATE -> today` em chunks semanais. Upsert (delete+insert por `occurrence_id`).
+- **UPDATE**: banco populado. Re-check do último dia (detecta revisoes), depois coleta `last_day+1 -> today`. Upsert com diff de `actual`/`forecast`/`previous`.
 
 ## Estrutura do Projeto
 
@@ -89,12 +89,12 @@ calendario_economico/
 
 | Modulo              | Responsabilidade                                                   |
 | ------------------- | ------------------------------------------------------------------ |
-| `settings.py`       | Defaults do pipeline. Sobrescrevivel via env vars `CALENDAR_*`.   |
+| `settings.py`       | Defaults do pipeline.                                              |
 | `models.py`         | Modelos pydantic v2 que validam payload da API.                    |
 | `db.py`             | Schema SQLAlchemy Core e `get_engine()`.                           |
 | `client.py`         | GET na API com retry/backoff em 429 e outros erros.                |
 | `chunks.py`         | Particiona ranges de datas em chunks semanais ou blocos de N dias. |
-| `repository.py`     | Upserts no SQLite (delete+insert burro, ou com diff de revisoes).  |
+| `repository.py`     | Upserts no SQLite (delete+insert ou diff de revisoes).             |
 | `logging_config.py` | `basicConfig` com nivel configuravel.                              |
 | `pipeline.py`       | Orquestra fetch -> valida -> upsert. Detecta COLD/UPDATE.          |
 
@@ -105,11 +105,7 @@ SQLite em `base/economic_calendar.db` (criado automaticamente no primeiro run). 
 - `economic_events` (dim) - um row por evento (CPI, NFP, etc). PK `event_id`.
 - `economic_occurrences` (fact) - um row por data de ocorrencia com `actual`/`forecast`/`previous`. PK `occurrence_id`. FK logico `event_id`. Indices em `event_id` e `occurrence_time`.
 
-Schema e idêntico ao script legado (`00_Dados/calendario_economico.py`). Sem migrations.
-
 ## Notas
 
 - API Investing.com pode rate-limit (429). Cliente aguarda `RETRY_BACKOFF^attempt * 5s` e tenta de novo.
 - Payloads com campos desconhecidos sao aceitos (`extra="ignore"`). Campos obrigatorios ausentes rejeitam o chunk inteiro.
-- `occurrence_time` com suffix `Z` e convertido para datetime naive automaticamente.
-- Detalhes de revisoes aparecem apenas com `CALENDAR_LOG_LEVEL=DEBUG`.
